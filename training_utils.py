@@ -12,10 +12,14 @@ from torch.optim.lr_scheduler import LambdaLR
 class ModelEMA:
     """Maintain an exponential moving average of model parameters and floating buffers."""
 
-    def __init__(self, model: nn.Module, decay: float) -> None:
+    def __init__(self, model: nn.Module, decay: float, warmup_tau: float = 0.0) -> None:
         if not 0 <= decay < 1:
             raise ValueError("EMA decay must be in [0, 1)")
+        if warmup_tau < 0:
+            raise ValueError("EMA warm-up tau cannot be negative")
         self.decay = decay
+        self.warmup_tau = warmup_tau
+        self.updates = 0
         self.model = copy.deepcopy(model).eval()
         for parameter in self.model.parameters():
             parameter.requires_grad_(False)
@@ -23,12 +27,16 @@ class ModelEMA:
     @torch.no_grad()
     def update(self, model: nn.Module) -> None:
         """Move averaged state toward the latest model state."""
+        self.updates += 1
+        decay = self.decay
+        if self.warmup_tau:
+            decay *= 1 - math.exp(-self.updates / self.warmup_tau)
         averaged_state = self.model.state_dict()
         current_state = model.state_dict()
         for name, averaged_value in averaged_state.items():
             current_value = current_state[name].detach()
             if averaged_value.is_floating_point():
-                averaged_value.mul_(self.decay).add_(current_value, alpha=1 - self.decay)
+                averaged_value.mul_(decay).add_(current_value, alpha=1 - decay)
             else:
                 averaged_value.copy_(current_value)
 

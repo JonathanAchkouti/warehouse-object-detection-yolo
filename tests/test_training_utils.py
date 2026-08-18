@@ -20,6 +20,19 @@ def test_ema_updates_toward_current_model() -> None:
     assert not ema.model.weight.requires_grad
 
 
+def test_ema_warmup_does_not_retain_the_untrained_initial_state() -> None:
+    model = nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+    ema = ModelEMA(model, decay=0.9998, warmup_tau=2000.0)
+
+    with torch.no_grad():
+        model.weight.fill_(3.0)
+    ema.update(model)
+
+    assert ema.model.weight.item() > 2.99
+
+
 def test_warmup_cosine_scheduler_warms_then_decays() -> None:
     model = nn.Linear(1, 1)
     optimizer = SGD(model.parameters(), lr=1.0)

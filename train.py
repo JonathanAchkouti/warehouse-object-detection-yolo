@@ -124,6 +124,7 @@ def save_last_checkpoint(
             "global_step": global_step,
             "model": model.state_dict(),
             "ema": ema.state_dict(),
+            "ema_updates": ema.updates,
             "optimizer": optimizer.state_dict(),
             "scheduler": scheduler.state_dict(),
             "scaler": scaler.state_dict(),
@@ -153,6 +154,7 @@ def restore_checkpoint(
         )
     model.load_state_dict(checkpoint["model"])
     ema.load_state_dict(checkpoint["ema"])
+    ema.updates = int(checkpoint.get("ema_updates", 0))
     optimizer.load_state_dict(checkpoint["optimizer"])
     scheduler.load_state_dict(checkpoint["scheduler"])
     scaler.load_state_dict(checkpoint["scaler"])
@@ -212,7 +214,11 @@ def train(config: dict[str, Any], run: Run | None, *, smoke: bool = False) -> No
     )
     amp_enabled = bool(settings.get("amp", True)) and device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
-    ema = ModelEMA(model, decay=float(settings.get("ema_decay", 0.9998)))
+    ema = ModelEMA(
+        model,
+        decay=float(settings.get("ema_decay", 0.9998)),
+        warmup_tau=float(settings.get("ema_warmup_tau", 2000.0)),
+    )
 
     output_dir = Path(config["output_dir"])
     if smoke:

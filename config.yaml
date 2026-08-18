@@ -30,6 +30,7 @@ train:
   eval_every: 2
   grad_clip: 10.0
   ema_decay: 0.9998
+  ema_warmup_tau: 2000.0
   horizontal_flip: 0.5
   color_jitter: 0.15
   repeat_factor_threshold: 0.0
