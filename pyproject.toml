@@ -5,6 +5,7 @@ description = "A student baseline for warehouse object detection on the LOCO dat
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "albumentations>=2.0,<3",
     "einops>=0.8",
     "matplotlib>=3.8",
     "numpy>=1.26",
@@ -13,6 +14,7 @@ dependencies = [
     "torchmetrics[detection]>=1.7",
     "torchvision>=0.22",
     "tqdm>=4.66",
+    "ultralytics>=8.4,<9",
     "wandb>=0.17",
 ]
 

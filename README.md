@@ -53,6 +53,46 @@ uv run train.py
 Choose your final checkpoint using the validation holdout. The baseline reserves one image in every five
 from each training subset for validation and saves its best checkpoint to `runs/baseline/weights/best.pt`.
 
+## COCO-pretrained YOLO experiment
+
+`e11_yolo11n_domain_aug` is the stronger accuracy-efficiency candidate. It fine-tunes the
+COCO-pretrained YOLO11 nano detector at 640 pixels with aspect-ratio-preserving letterboxing. Its
+domain-generalization pipeline randomly uses grayscale, Gaussian or motion blur, mild sharpening,
+gamma changes, brightness/contrast changes, HSV jitter, mosaic, and small geometric perturbations.
+It never permanently removes colour or attempts to reconstruct information from every blurry image.
+
+Build a lightweight YOLO view and verify that the default manifest contains only subsets 2, 3,
+and 5:
+
+```bash
+uv run yolo_data.py --raw-dir dataset --output-dir /tmp/loco-yolo
+```
+
+The Colab configuration copies permitted development images to the runtime's fast local disk.
+Checkpoints remain persistent in Drive, but repeated training reads do not pay the mounted-Drive
+latency penalty.
+
+Train or resume the experiment:
+
+```bash
+uv run train_yolo.py --config configs/e11_yolo11n_domain_aug.yaml
+```
+
+Ultralytics saves resumable and best checkpoints under
+`runs/e11_yolo11n_domain_aug/weights/`. Evaluate the selected checkpoint with the repository's
+unchanged Torchmetrics mAP@0.5 implementation:
+
+```bash
+uv run eval_yolo.py \
+  --config configs/e11_yolo11n_domain_aug.yaml \
+  --weights runs/e11_yolo11n_domain_aug/weights/best.pt \
+  --split validation \
+  --class-metrics
+```
+
+Use `YOLODomainGeneralization.ipynb` in Colab for the guarded end-to-end workflow. Its training
+manifest excludes subsets 1 and 4, and its locked test cell is disabled by default.
+
 ## Evaluate
 
 ```bash
