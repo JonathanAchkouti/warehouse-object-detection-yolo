@@ -4,6 +4,7 @@ data:
 model:
   input_size: 512
   p3: true
+  p3_semantic_fusion: false
   anchor_scales: [0.025, 0.05, 0.1, 0.2, 0.4, 0.7, 0.95, 1.0]
   aspect_ratios: [2, 3]
   score_thresh: 0.01

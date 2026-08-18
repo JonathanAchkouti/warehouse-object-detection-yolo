@@ -1,0 +1,6 @@
+base: ../config.yaml
+model:
+  p3_semantic_fusion: true
+train:
+  repeat_factor_threshold: 0.20
+output_dir: runs/e10_semantic_p3_512

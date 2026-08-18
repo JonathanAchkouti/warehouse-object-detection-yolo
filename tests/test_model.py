@@ -42,3 +42,12 @@ def test_missing_anchor_scales_fails_clearly() -> None:
         assert "require at least 8 anchor scales" in str(error)
     else:
         raise AssertionError("Expected an invalid anchor configuration to fail")
+
+
+def test_semantic_p3_fusion_remains_lightweight() -> None:
+    settings = {**MODEL_CONFIG, "p3_semantic_fusion": True}
+
+    model = create_model(6, settings)
+    total, _ = count_parameters(model)
+
+    assert 2_265_300 < total < 2_400_000

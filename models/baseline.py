@@ -7,6 +7,7 @@ from typing import Any
 
 import torch
 from torch import nn
+from torch.nn import functional as functional
 from torchvision.models.detection import (
     SSDLite320_MobileNet_V3_Large_Weights,
     ssdlite320_mobilenet_v3_large,
@@ -14,6 +15,7 @@ from torchvision.models.detection import (
 from torchvision.models.detection import _utils as detection_utils
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 from torchvision.models.detection.ssdlite import SSDLiteHead
+from torchvision.ops.misc import Conv2dNormActivation
 
 from utils.config import load_config
 
@@ -24,17 +26,52 @@ C3_INDEX = 6
 class C3TapBackbone(nn.Module):
     """Expose MobileNetV3's stride-8 feature map before the stock SSD features."""
 
-    def __init__(self, base: nn.Module) -> None:
+    def __init__(self, base: nn.Module, *, semantic_fusion: bool = False) -> None:
         super().__init__()
         self.stem = base.features[0][: C3_INDEX + 1]
         self.rest = base.features[0][C3_INDEX + 1 :]
         self.tail = base.features[1]
         self.extra = base.extra
+        self.semantic_fusion = semantic_fusion
+        if semantic_fusion:
+            norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+            self.lateral = Conv2dNormActivation(
+                672,
+                40,
+                kernel_size=1,
+                norm_layer=norm_layer,
+                activation_layer=None,
+            )
+            self.smooth = nn.Sequential(
+                Conv2dNormActivation(
+                    40,
+                    40,
+                    kernel_size=3,
+                    padding=1,
+                    groups=40,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.Hardswish,
+                ),
+                Conv2dNormActivation(
+                    40,
+                    40,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.Hardswish,
+                ),
+            )
 
     def forward(self, inputs: torch.Tensor) -> OrderedDict[str, torch.Tensor]:
         """Return the stride-8 tap followed by all stock SSDLite feature levels."""
         c3 = self.stem(inputs)
         c4 = self.rest(c3)
+        if self.semantic_fusion:
+            top_down = functional.interpolate(
+                self.lateral(c4),
+                size=c3.shape[-2:],
+                mode="nearest",
+            )
+            c3 = self.smooth(c3 + top_down)
         features = [c3, c4]
 
         hidden = self.tail(c4)
@@ -67,6 +104,7 @@ def create_model(
     settings = _model_settings(model_config)
     input_size = int(settings.get("input_size", 512))
     use_p3 = bool(settings.get("p3", True))
+    semantic_fusion = bool(settings.get("p3_semantic_fusion", False))
     scales = list(settings.get("anchor_scales", [0.025, 0.05, 0.1, 0.2, 0.4, 0.7, 0.95, 1.0]))
     ratios = list(settings.get("aspect_ratios", [2, 3]))
 
@@ -76,7 +114,10 @@ def create_model(
         weights_backbone=None,
     )
     if use_p3:
-        model.backbone = C3TapBackbone(model.backbone)
+        model.backbone = C3TapBackbone(
+            model.backbone,
+            semantic_fusion=semantic_fusion,
+        )
 
     in_channels = detection_utils.retrieve_out_channels(
         model.backbone,
