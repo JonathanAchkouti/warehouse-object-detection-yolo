@@ -6,7 +6,9 @@ import pytest
 import torch
 from PIL import Image
 
+from augmentations import RandomHorizontalFlip
 from dataset import LocoDataset
+from sampling import repeat_factor_weights
 
 
 def write_subset(
@@ -120,3 +122,34 @@ def test_image_paths_do_not_depend_on_working_directory(
     image_CHW, _ = dataset[0]
 
     assert image_CHW.shape == (3, 6, 8)
+
+
+def test_optional_horizontal_flip_updates_boxes(tmp_path: Path) -> None:
+    dataset = make_dataset(tmp_path)
+    dataset.transform = RandomHorizontalFlip(probability=1.0)
+
+    image_CHW, target = dataset[0]
+
+    assert image_CHW.shape == (3, 6, 8)
+    assert target["boxes"].tolist() == [[4, 2, 7, 6], [6, 0, 8, 1]]
+
+
+def test_custom_files_can_disable_default_holdout(tmp_path: Path) -> None:
+    make_dataset(tmp_path)
+
+    dataset = LocoDataset(
+        tmp_path,
+        split="train",
+        files=("loco-sub2-v1-train.json",),
+        use_holdout=False,
+    )
+
+    assert len(dataset) == 3
+
+
+def test_repeat_factor_sampling_prioritizes_rare_images(tmp_path: Path) -> None:
+    dataset = make_dataset(tmp_path)
+
+    weights = repeat_factor_weights(dataset, threshold=1.0)
+
+    assert weights.tolist() == pytest.approx([2**0.5, 1.0])

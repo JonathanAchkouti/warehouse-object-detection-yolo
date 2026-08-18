@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -50,14 +51,25 @@ ANNOTATIONS_DIRNAME = "rgb"
 class LocoDataset(Dataset[tuple[Tensor, DetectionTarget]]):
     """Load a LOCO split with boxes in absolute ``xyxy`` coordinates."""
 
-    def __init__(self, raw_dir: Path, split: Literal["train", "validation", "test"]) -> None:
-        raw_dir = self._resolve_raw_dir(raw_dir, split)
+    def __init__(
+        self,
+        raw_dir: Path,
+        split: Literal["train", "validation", "test"],
+        transform: Callable[[Tensor, DetectionTarget], tuple[Tensor, DetectionTarget]]
+        | None = None,
+        files: tuple[str, ...] | None = None,
+        *,
+        use_holdout: bool = True,
+    ) -> None:
+        filenames = files if files is not None else SUBSET_FILES[split]
+        raw_dir = self._resolve_raw_dir(raw_dir, filenames)
+        self.transform = transform
         self.images: list[dict] = []
         self.image_paths: dict[int, Path] = {}
         self.annotations: defaultdict[int, list[dict]] = defaultdict(list)
         categories: list[dict] | None = None
 
-        for filename in SUBSET_FILES[split]:
+        for filename in filenames:
             subset = self._load_subset(raw_dir / ANNOTATIONS_DIRNAME / filename)
             subset_categories = sorted(subset["categories"], key=lambda category: category["id"])
             if categories is None:
@@ -68,7 +80,7 @@ class LocoDataset(Dataset[tuple[Tensor, DetectionTarget]]):
             source_image_ids = {image["id"] for image in subset["images"]}
             image_ids: dict[int, int] = {}
             for image_index, image in enumerate(subset["images"]):
-                if split != "test":
+                if split != "test" and use_holdout:
                     is_validation = image_index % VALIDATION_EVERY == 0
                     if (split == "validation") != is_validation:
                         continue
@@ -103,15 +115,14 @@ class LocoDataset(Dataset[tuple[Tensor, DetectionTarget]]):
         }
 
     @staticmethod
-    def _resolve_raw_dir(raw_dir: Path, split: Literal["train", "validation", "test"]) -> Path:
+    def _resolve_raw_dir(raw_dir: Path, filenames: tuple[str, ...]) -> Path:
         """Return the LOCO directory holding ``rgb`` annotations and the ``subset-*`` images."""
         for candidate in (raw_dir, raw_dir.parent):
             if all(
-                (candidate / ANNOTATIONS_DIRNAME / filename).is_file()
-                for filename in SUBSET_FILES[split]
+                (candidate / ANNOTATIONS_DIRNAME / filename).is_file() for filename in filenames
             ):
                 return candidate
-        expected = raw_dir / ANNOTATIONS_DIRNAME / SUBSET_FILES[split][0]
+        expected = raw_dir / ANNOTATIONS_DIRNAME / filenames[0]
         raise FileNotFoundError(
             f"LOCO annotations not found. Expected files such as {expected}; set data.raw_dir to "
             "the directory scripts/download_loco.sh wrote, which holds rgb/ and subset-*/."
@@ -128,6 +139,17 @@ class LocoDataset(Dataset[tuple[Tensor, DetectionTarget]]):
 
     def __len__(self) -> int:
         return len(self.images)
+
+    def image_labels(self, index: int) -> set[int]:
+        """Return foreground labels present in an image without loading its pixels."""
+        image_id = self.images[index]["id"]
+        return {
+            self.category_labels[annotation["category_id"]]
+            for annotation in self.annotations.get(image_id, [])
+            if not annotation.get("iscrowd", 0)
+            and annotation["bbox"][2] > 0
+            and annotation["bbox"][3] > 0
+        }
 
     def __getitem__(self, index: int) -> tuple[Tensor, DetectionTarget]:
         image_info = self.images[index]
@@ -154,6 +176,8 @@ class LocoDataset(Dataset[tuple[Tensor, DetectionTarget]]):
             "boxes": torch.tensor(boxes_NQ, dtype=torch.float32).reshape(-1, 4),
             "labels": torch.tensor(labels_N, dtype=torch.int64),
         }
+        if self.transform is not None:
+            image_CHW, target = self.transform(image_CHW, target)
         return image_CHW, target
 
 

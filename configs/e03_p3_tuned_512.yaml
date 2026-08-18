@@ -1,0 +1,6 @@
+base: ../config.yaml
+train:
+  epochs: 15
+  horizontal_flip: 0.0
+  color_jitter: 0.0
+output_dir: runs/e03_p3_tuned_512

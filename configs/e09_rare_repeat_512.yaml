@@ -1,0 +1,4 @@
+base: ../config.yaml
+train:
+  repeat_factor_threshold: 0.02
+output_dir: runs/e09_rare_repeat_512

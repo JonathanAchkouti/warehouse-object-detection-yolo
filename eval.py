@@ -14,6 +14,7 @@ from dataset import LocoDataset, collate_fn
 from metrics.accuracy import compute_map50
 from metrics.efficiency import count_parameters, measure_gflops
 from models.baseline import create_model
+from reporting import compute_detection_metrics
 from utils.config import load_config
 
 
@@ -44,13 +45,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--weights", type=Path, required=True)
     parser.add_argument("--config", type=Path, default=Path("config.yaml"))
+    parser.add_argument(
+        "--split",
+        choices=("validation", "test"),
+        default="test",
+        help="use validation during development; reserve test for the locked final model",
+    )
+    parser.add_argument("--class-metrics", action="store_true")
     args = parser.parse_args()
     if not args.weights.is_file():
         parser.error(f"Weights file not found: {args.weights}")
 
     config: dict[str, Any] = load_config(args.config)
     data = config["data"]
-    dataset = LocoDataset(Path(data["raw_dir"]), split="test")
+    dataset = LocoDataset(Path(data["raw_dir"]), split=args.split)
     loader = DataLoader(
         dataset,
         batch_size=config["train"]["batch_size"],
@@ -59,7 +67,7 @@ def main() -> None:
         collate_fn=collate_fn,
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = create_model(dataset.num_classes)
+    model = create_model(dataset.num_classes, config.get("model"))
     model.load_state_dict(torch.load(args.weights, map_location=device, weights_only=True))
     model.to(device)
 
@@ -75,6 +83,11 @@ def main() -> None:
     print(f"  of which trainable:   {trainable:,}")
     print(f"GFLOPs per image:       {gflops:.3f}")
     print(f"median batch-1 latency: {latency:.2f} ms ({device}) — machine-dependent, not graded")
+    if args.class_metrics:
+        details = compute_detection_metrics(model, loader, device, dataset.label_names)
+        print("per-class AP@0.5:")
+        for name, value in details.per_class.items():
+            print(f"  {name:<24} {value:.4f}")
 
 
 if __name__ == "__main__":

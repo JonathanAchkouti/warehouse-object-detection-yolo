@@ -1,0 +1,9 @@
+base: ../config.yaml
+model:
+  p3: false
+  anchor_scales: [0.2, 0.35, 0.5, 0.65, 0.8, 0.95, 1.0]
+train:
+  epochs: 15
+  horizontal_flip: 0.0
+  color_jitter: 0.0
+output_dir: runs/e07_no_p3_default_anchors_512

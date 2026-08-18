@@ -1,16 +1,41 @@
 data:
   raw_dir: dataset
 
-train:
-  epochs: 20
-  batch_size: 4
-  learning_rate: 0.005
-  momentum: 0.9
-  weight_decay: 0.0005
-  num_workers: 0
-  seed: 0
+model:
+  input_size: 512
+  p3: true
+  anchor_scales: [0.025, 0.05, 0.1, 0.2, 0.4, 0.7, 0.95, 1.0]
+  aspect_ratios: [2, 3]
+  score_thresh: 0.01
+  nms_thresh: 0.45
+  detections_per_img: 300
+  topk_candidates: 300
 
-output_dir: runs/baseline
+train:
+  epochs: 60
+  batch_size: 8
+  accumulation_steps: 2
+  learning_rate: 0.02
+  momentum: 0.9
+  nesterov: true
+  weight_decay: 0.00004
+  num_workers: 2
+  persistent_workers: true
+  prefetch_factor: 2
+  seed: 0
+  pretrained: true
+  amp: true
+  channels_last: true
+  warmup_iters: 500
+  eval_every: 2
+  grad_clip: 10.0
+  ema_decay: 0.9998
+  horizontal_flip: 0.5
+  color_jitter: 0.15
+  repeat_factor_threshold: 0.0
+  resume: true
+
+output_dir: runs/p3_ssdlite_512
 
 wandb:
   enabled: false

@@ -1,0 +1,2 @@
+base: ../config.yaml
+output_dir: runs/e08_augmented_512
