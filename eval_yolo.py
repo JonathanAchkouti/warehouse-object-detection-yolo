@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from dataset import LocoDataset, collate_fn
 from eval import measure_latency_ms
 from metrics.accuracy import compute_map50
-from metrics.efficiency import count_parameters
+from metrics.efficiency import count_parameters, measure_gflops
 from models.yolo_adapter import UltralyticsDetector
 from reporting import compute_detection_metrics
 from utils.config import load_config
@@ -62,10 +62,12 @@ def main() -> None:
     else:
         map50 = compute_map50(model, loader, device)
     latency = measure_latency_ms(model, sample_CHW.to(device), device)
+    # Ultralytics fuses batch normalization into convolutions on first prediction. Count the
+    # deployed, fused network after evaluation, matching the order used by the template evaluator.
     parameters, trainable = count_parameters(model.network)
-    from ultralytics.utils.torch_utils import get_flops
-
-    gflops = float(get_flops(model.network, imgsz=int(model_settings["input_size"])))
+    # Use the repository's graded tracer on the fixed split probe. Unlike Ultralytics' square-input
+    # estimate, this follows the adapter's real aspect-ratio-preserving prediction path.
+    gflops = measure_gflops(model, sample_CHW, device)
 
     print(f"mAP@0.5:                {map50:.4f}")
     print(f"parameters:             {parameters:,} ({parameters / 1e6:.2f} M)")

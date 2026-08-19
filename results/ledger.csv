@@ -1,0 +1,5 @@
+id,architecture,input_size,hypothesis,epochs,validation_map50,locked_test_map50,parameters,gflops,verdict
+E03,P3+SSDLite,512,Test tuned anchors and stride-8 P3 at 512 pixels,15,0.186025,,2265300,2.137,Extend the schedule and improve robustness
+E09,P3+SSDLite,512,Add a longer schedule augmentation and rare-image repetition,60,0.330134,0.1320,2265300,2.137,Reject because of severe warehouse-domain failure
+E11,YOLO11n,640,Add COCO pretraining and domain-oriented augmentation,100,0.6467,0.2817,2583127,,Accept as the first baseline-beating candidate
+E12,YOLO11n,640,Increase only mild sharpening probability from 0.12 to 0.20,100,0.6618855,0.2914,2583127,3.81103104,Select as the validation-chosen final model

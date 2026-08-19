@@ -9,8 +9,10 @@
     "url": "https://github.com/JonathanAchkouti/inmindAcademyDetector/releases/tag/e12-final"
   },
   "efficiency": {
-    "gflops_per_image": 6.7,
-    "parameters": 2624080
+    "gflops_measurement": "metrics.efficiency.measure_gflops on the first locked-test image",
+    "gflops_per_image": 3.81103104,
+    "parameter_state": "post-inference batch-normalization fusion",
+    "parameters": 2583127
   },
   "experiment": "e12_sharpen_20",
   "locked_test": {

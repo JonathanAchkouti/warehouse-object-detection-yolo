@@ -3,6 +3,10 @@
 A minimal PyTorch baseline for detecting warehouse objects in the
 [LOCO dataset](https://github.com/tum-fml/loco).
 
+> **Final-model entry points:** use `train_yolo.py`, `eval_yolo.py`, and
+> `configs/e12_sharpen_20.yaml`. The template's `train.py` and `eval.py` remain available only for
+> the earlier SSDLite experiments and do not construct the submitted YOLO model.
+
 ## Project objective
 
 Improve the baseline detector while balancing three goals:
@@ -67,11 +71,13 @@ useful colour cues. The allowed validation metric improved from 0.6467 for E11 t
 | Model | Validation mAP@0.5 | Locked test mAP@0.5 | Parameters | GFLOPs |
 | ----- | ------------------: | --------------------: | ---------: | -----: |
 | Instructor baseline | - | 0.2547 | 18,950,729 | 23.825 |
-| E11 YOLO11n | 0.6467 | 0.2817 | 2,624,080 | 6.7 |
-| **E12 YOLO11n (final)** | **0.6619** | **0.2914** | **2,624,080** | **6.7** |
+| E11 YOLO11n | 0.6467 | 0.2817 | 2,583,127 | - |
+| **E12 YOLO11n (final)** | **0.6619** | **0.2914** | **2,583,127** | **3.811** |
 
 E12 improves locked-test mAP@0.5 by 0.0367 over the baseline while using about 86% fewer
-parameters and 72% fewer GFLOPs. The complete aggregate and per-class record is versioned in
+parameters and 84% fewer GFLOPs. Efficiency is measured with the repository's unchanged
+`count_parameters` and `measure_gflops` functions after deployment-time batch-normalization
+fusion, using the first locked-test image as the fixed probe. The complete aggregate and per-class record is versioned in
 `results/e12_sharpen_20.json`. The locked checkpoint is identified by SHA-256:
 
 ```text
@@ -99,6 +105,15 @@ uv run eval_yolo.py \
   --num-workers 0
 ```
 
+Reproduce only the graded efficiency figures on the locked probe without recomputing test accuracy:
+
+```bash
+uv run measure_yolo_efficiency.py \
+  --config configs/e12_sharpen_20.yaml \
+  --weights runs/e12_sharpen_20/weights/best.pt \
+  --split test
+```
+
 The checkpoint is intentionally not stored as a normal Git object. The repository ignores `*.pt`
 files to avoid bloating its history. Authorized repository collaborators can download the exact
 checkpoint from the private
@@ -114,6 +129,41 @@ mv runs/e12_sharpen_20/weights/e12_sharpen_20_best.pt \
   runs/e12_sharpen_20/weights/best.pt
 shasum -a 256 runs/e12_sharpen_20/weights/best.pt
 ```
+
+### Domain-generalization result
+
+The same-warehouse validation holdout substantially overestimates performance on unseen
+warehouses: overall mAP@0.5 falls from 0.6619 to 0.2914. This is the expected LOCO domain shift,
+not an image-level split leak; checkpoint selection used only subsets 2, 3, and 5.
+
+| Class | Validation AP@0.5 | Locked test AP@0.5 | Change |
+| ----- | ----------------: | -----------------: | -----: |
+| small load carrier | 0.5657 | 0.2454 | -0.3203 |
+| forklift | 0.7673 | 0.1435 | -0.6238 |
+| pallet | 0.6004 | 0.5279 | -0.0725 |
+| stillage | 0.6994 | 0.3863 | -0.3131 |
+| pallet truck | 0.6765 | 0.1542 | -0.5223 |
+
+Forklift and pallet-truck AP fall most because they are rare and their appearance and frequency
+shift sharply across warehouses. The final result therefore measures cross-warehouse robustness,
+while the validation result should be interpreted only as an in-domain model-selection signal.
+
+### Experiment ledger
+
+The committed [experiment ledger](results/ledger.csv) records every run for which metrics were
+retained. Configuration files without ledger rows were prepared candidate ablations, not completed
+runs, and are not presented as empirical evidence.
+
+| Run | Main question | Validation mAP@0.5 | Locked test mAP@0.5 | Decision |
+| --- | ------------- | ------------------: | --------------------: | -------- |
+| E03 | Can tuned P3+SSDLite learn at 512 px in 15 epochs? | 0.1860 | - | Extend training and improve robustness. |
+| E09 | Do a longer schedule, augmentation, and rare-image repetition generalize? | 0.3301 | 0.1320 | Reject: severe warehouse-domain failure. |
+| E11 | Does a COCO-pretrained nano YOLO improve the accuracy-efficiency frontier? | 0.6467 | 0.2817 | Accept as the first baseline-beating candidate. |
+| E12 | Does increasing mild sharpening probability from 0.12 to 0.20 help? | 0.6619 | 0.2914 | Select as final from validation, then lock. |
+
+E12 changes one variable relative to E11 and improves validation by 0.0152 and locked test by
+0.0097. E09 is retained in the ledger because its large validation-to-test reversal motivated the
+move to stronger COCO pretraining and domain-oriented image augmentation.
 
 ## COCO-pretrained YOLO experiments
 
@@ -192,3 +242,8 @@ uv run pytest
 uv run ruff format --check .
 uv run ruff check .
 ```
+
+## Third-party model
+
+This academic project fine-tunes Ultralytics YOLO11. Ultralytics publishes YOLO11 under
+[AGPL-3.0 and Enterprise licensing options](https://docs.ultralytics.com/models/yolo11/).
