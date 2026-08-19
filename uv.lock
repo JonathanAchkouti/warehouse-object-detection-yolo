@@ -630,7 +630,7 @@ requires-dist = [
     { name = "torchvision", marker = "sys_platform != 'linux'", specifier = ">=0.22" },
     { name = "torchvision", marker = "sys_platform == 'linux'", specifier = ">=0.22", index = "https://download.pytorch.org/whl/cu128" },
     { name = "tqdm", specifier = ">=4.66" },
-    { name = "ultralytics", specifier = ">=8.4,<9" },
+    { name = "ultralytics", specifier = ">=8.4.121,<9" },
     { name = "wandb", specifier = ">=0.17" },
 ]
 

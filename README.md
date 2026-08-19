@@ -3,9 +3,10 @@
 A minimal PyTorch baseline for detecting warehouse objects in the
 [LOCO dataset](https://github.com/tum-fml/loco).
 
-> **Final-model entry points:** use `train_yolo.py`, `eval_yolo.py`, and
-> `configs/e12_sharpen_20.yaml`. The template's `train.py` and `eval.py` remain available only for
-> the earlier SSDLite experiments and do not construct the submitted YOLO model.
+> **Current training candidate:** use `train_yolo.py`, `eval_yolo.py`, and
+> `configs/e13_yolo26s_896.yaml` for the unmeasured YOLO26s high-resolution experiment. E12 remains
+> the last locked and reported model until E13 has been selected on development validation. The
+> template's `train.py` and `eval.py` remain available only for the earlier SSDLite experiments.
 
 ## Project objective
 
@@ -30,8 +31,8 @@ mAP@0.5, no higher total parameter count or GFLOPs, and is strictly better on at
 ## Setup
 
 ```bash
-git clone https://github.com/malek-wahidi/AcademyObjectDetection.git
-cd AcademyObjectDetection
+git clone https://github.com/JonathanAchkouti/inmindAcademyDetector.git
+cd inmindAcademyDetector
 uv sync
 bash scripts/download_loco.sh
 ```
@@ -56,6 +57,50 @@ uv run train.py
 
 Choose your final checkpoint using the validation holdout. The baseline reserves one image in every five
 from each training subset for validation and saves its best checkpoint to `runs/baseline/weights/best.pt`.
+
+## E13 candidate: YOLO26s at 896 pixels
+
+E13 is the next development-only candidate. It replaces YOLO11n with COCO-pretrained YOLO26s and
+raises the inference size from 640 to 896 pixels. It otherwise retains E12's data split, metric,
+confidence/NMS limits, and domain-oriented augmentation recipe. Batch size is reduced to 8 and the
+multi-scale range to 0.15 so the largest randomized training batches remain practical on a T4.
+
+E13 has no claimed validation or locked-test result yet. Do not add it to the experiment ledger or
+run subsets 1 and 4 until its checkpoint and settings have been selected using only the fixed
+development validation split.
+
+Before training, run the conservative budget gate. It uses a blank 1920x1080 probe and the larger
+80-class COCO head; fine-tuning replaces that head with the smaller five-class LOCO head. The command
+downloads `yolo26s.pt` on first use and fails if the deployed model exceeds either instructor baseline
+budget:
+
+```bash
+uv run preflight_yolo.py --config configs/e13_yolo26s_896.yaml
+```
+
+With Ultralytics 8.4.121, the conservative COCO-head preflight measured 9,496,140 parameters and
+23.478239 GFLOPs, so the 896-pixel candidate passed both limits. These are architecture-gate
+figures, not final submission measurements; repeat the unchanged official efficiency evaluation on
+the selected five-class checkpoint.
+
+Then run an isolated one-epoch smoke test and start or resume the full experiment:
+
+```bash
+uv run train_yolo.py --config configs/e13_yolo26s_896.yaml --smoke
+uv run train_yolo.py --config configs/e13_yolo26s_896.yaml
+```
+
+Select the checkpoint only from validation on subsets 2, 3, and 5:
+
+```bash
+uv run eval_yolo.py \
+  --config configs/e13_yolo26s_896.yaml \
+  --weights runs/e13_yolo26s_896/weights/best.pt \
+  --split validation \
+  --class-metrics \
+  --batch-size 2 \
+  --num-workers 0
+```
 
 ## Final submission: E12 YOLO11n
 
@@ -245,5 +290,5 @@ uv run ruff check .
 
 ## Third-party model
 
-This academic project fine-tunes Ultralytics YOLO11. Ultralytics publishes YOLO11 under
-[AGPL-3.0 and Enterprise licensing options](https://docs.ultralytics.com/models/yolo11/).
+This academic project fine-tunes Ultralytics YOLO11 and YOLO26 checkpoints. Ultralytics publishes
+them under [AGPL-3.0 and Enterprise licensing options](https://docs.ultralytics.com/models/yolo26/).

@@ -1,0 +1,9 @@
+base: e12_sharpen_20.yaml
+model:
+  weights: yolo26s.pt
+  input_size: 896
+train:
+  batch_size: 8
+  patience: 25
+  multi_scale: 0.15
+output_dir: runs/e13_yolo26s_896
