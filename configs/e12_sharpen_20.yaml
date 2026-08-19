@@ -1,0 +1,41 @@
+data:
+  raw_dir: dataset
+  yolo_workspace: /content/loco-yolo
+  copy_images: true
+model:
+  weights: yolo11n.pt
+  input_size: 640
+  score_thresh: 0.001
+  nms_thresh: 0.7
+  detections_per_img: 300
+train:
+  epochs: 100
+  batch_size: 16
+  num_workers: 2
+  seed: 0
+  patience: 20
+  resume: true
+  amp: true
+  deterministic: true
+  optimizer: auto
+  cos_lr: true
+  close_mosaic: 10
+  horizontal_flip: 0.5
+  hsv_h: 0.03
+  hsv_s: 0.4
+  hsv_v: 0.4
+  degrees: 3.0
+  translate: 0.1
+  scale: 0.4
+  shear: 1.0
+  perspective: 0.0005
+  mosaic: 0.5
+  mixup: 0.05
+  multi_scale: 0.25
+  domain_augmentations:
+    grayscale_probability: 0.2
+    blur_probability: 0.18
+    sharpen_probability: 0.2
+    gamma_probability: 0.2
+    brightness_contrast_probability: 0.3
+output_dir: runs/e12_sharpen_20
