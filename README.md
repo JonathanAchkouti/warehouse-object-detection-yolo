@@ -100,7 +100,20 @@ uv run eval_yolo.py \
 ```
 
 The checkpoint is intentionally not stored as a normal Git object. The repository ignores `*.pt`
-files to avoid bloating its history; the final checkpoint must be supplied separately to the grader.
+files to avoid bloating its history. Authorized repository collaborators can download the exact
+checkpoint from the private
+[E12 final checkpoint release](https://github.com/JonathanAchkouti/inmindAcademyDetector/releases/tag/e12-final):
+
+```bash
+mkdir -p runs/e12_sharpen_20/weights
+gh release download e12-final \
+  --repo JonathanAchkouti/inmindAcademyDetector \
+  --pattern e12_sharpen_20_best.pt \
+  --dir runs/e12_sharpen_20/weights
+mv runs/e12_sharpen_20/weights/e12_sharpen_20_best.pt \
+  runs/e12_sharpen_20/weights/best.pt
+shasum -a 256 runs/e12_sharpen_20/weights/best.pt
+```
 
 ## COCO-pretrained YOLO experiments
 

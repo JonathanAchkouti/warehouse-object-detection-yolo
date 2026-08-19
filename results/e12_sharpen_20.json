@@ -3,6 +3,11 @@
     "path": "runs/e12_sharpen_20/weights/best.pt",
     "sha256": "b9d38bf788ff08911d56f8e37220d78a6d2f6cf623d14fa1a26deb5c09be25ca"
   },
+  "checkpoint_release": {
+    "asset": "e12_sharpen_20_best.pt",
+    "tag": "e12-final",
+    "url": "https://github.com/JonathanAchkouti/inmindAcademyDetector/releases/tag/e12-final"
+  },
   "efficiency": {
     "gflops_per_image": 6.7,
     "parameters": 2624080
