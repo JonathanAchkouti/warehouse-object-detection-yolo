@@ -53,9 +53,58 @@ uv run train.py
 Choose your final checkpoint using the validation holdout. The baseline reserves one image in every five
 from each training subset for validation and saves its best checkpoint to `runs/baseline/weights/best.pt`.
 
-## COCO-pretrained YOLO experiment
+## Final submission: E12 YOLO11n
 
-`e11_yolo11n_domain_aug` is the stronger accuracy-efficiency candidate. It fine-tunes the
+The final model is `e12_sharpen_20`, a COCO-pretrained YOLO11 nano detector fine-tuned at
+640 pixels. Its checkpoint was selected only with the fixed validation holdout from subsets 2, 3,
+and 5, then frozen before its final evaluation on subsets 1 and 4.
+
+E12 is a controlled ablation of E11: the only change is increasing the probability of mild
+sharpening from 0.12 to 0.20. The hypothesis was that occasional sharpening would improve
+robustness to blur and variable image quality without permanently altering the dataset or removing
+useful colour cues. The allowed validation metric improved from 0.6467 for E11 to 0.6619 for E12.
+
+| Model | Validation mAP@0.5 | Locked test mAP@0.5 | Parameters | GFLOPs |
+| ----- | ------------------: | --------------------: | ---------: | -----: |
+| Instructor baseline | - | 0.2547 | 18,950,729 | 23.825 |
+| E11 YOLO11n | 0.6467 | 0.2817 | 2,624,080 | 6.7 |
+| **E12 YOLO11n (final)** | **0.6619** | **0.2914** | **2,624,080** | **6.7** |
+
+E12 improves locked-test mAP@0.5 by 0.0367 over the baseline while using about 86% fewer
+parameters and 72% fewer GFLOPs. The complete aggregate and per-class record is versioned in
+`results/e12_sharpen_20.json`. The locked checkpoint is identified by SHA-256:
+
+```text
+b9d38bf788ff08911d56f8e37220d78a6d2f6cf623d14fa1a26deb5c09be25ca
+```
+
+Train or resume the final experiment:
+
+```bash
+uv run train_yolo.py --config configs/e12_sharpen_20.yaml
+```
+
+Place the selected checkpoint at `runs/e12_sharpen_20/weights/best.pt`, verify its SHA-256, and
+reproduce the development evaluation with:
+
+```bash
+shasum -a 256 runs/e12_sharpen_20/weights/best.pt
+
+uv run eval_yolo.py \
+  --config configs/e12_sharpen_20.yaml \
+  --weights runs/e12_sharpen_20/weights/best.pt \
+  --split validation \
+  --class-metrics \
+  --batch-size 2 \
+  --num-workers 0
+```
+
+The checkpoint is intentionally not stored as a normal Git object. The repository ignores `*.pt`
+files to avoid bloating its history; the final checkpoint must be supplied separately to the grader.
+
+## COCO-pretrained YOLO experiments
+
+`e11_yolo11n_domain_aug` established the accuracy-efficiency candidate. It fine-tunes the
 COCO-pretrained YOLO11 nano detector at 640 pixels with aspect-ratio-preserving letterboxing. Its
 domain-generalization pipeline randomly uses grayscale, Gaussian or motion blur, mild sharpening,
 gamma changes, brightness/contrast changes, HSV jitter, mosaic, and small geometric perturbations.
@@ -72,7 +121,7 @@ The Colab configuration copies permitted development images to the runtime's fas
 Checkpoints remain persistent in Drive, but repeated training reads do not pay the mounted-Drive
 latency penalty.
 
-Train or resume the experiment:
+Train or resume E11:
 
 ```bash
 uv run train_yolo.py --config configs/e11_yolo11n_domain_aug.yaml
@@ -87,7 +136,9 @@ uv run eval_yolo.py \
   --config configs/e11_yolo11n_domain_aug.yaml \
   --weights runs/e11_yolo11n_domain_aug/weights/best.pt \
   --split validation \
-  --class-metrics
+  --class-metrics \
+  --batch-size 2 \
+  --num-workers 0
 ```
 
 Use `YOLODomainGeneralization.ipynb` in Colab for the guarded end-to-end workflow. Its training

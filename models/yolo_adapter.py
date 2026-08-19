@@ -24,8 +24,13 @@ class UltralyticsDetector(nn.Module):
         super().__init__()
         from ultralytics import YOLO
 
-        self.yolo = YOLO(str(weights))
-        self.network = self.yolo.model
+        yolo = YOLO(str(weights))
+        # Ultralytics overloads ``train()`` as its high-level training entry point. Registering
+        # the YOLO wrapper as a child ``nn.Module`` would therefore make ``self.eval()`` call
+        # ``yolo.train(False)`` and accidentally start a new training run. Keep only its actual
+        # PyTorch network registered while retaining the prediction wrapper as a plain attribute.
+        object.__setattr__(self, "_yolo", yolo)
+        self.network = yolo.model
         self.input_size = input_size
         self.score_threshold = score_threshold
         self.nms_threshold = nms_threshold
@@ -50,7 +55,7 @@ class UltralyticsDetector(nn.Module):
             sources.append(Image.fromarray(image_HWC))
 
         device = next(self.network.parameters()).device
-        results = self.yolo.predict(
+        results = self._yolo.predict(
             source=sources,
             imgsz=self.input_size,
             conf=self.score_threshold,

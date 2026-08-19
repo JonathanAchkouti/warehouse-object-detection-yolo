@@ -1,0 +1,49 @@
+{
+  "checkpoint": {
+    "path": "runs/e12_sharpen_20/weights/best.pt",
+    "sha256": "b9d38bf788ff08911d56f8e37220d78a6d2f6cf623d14fa1a26deb5c09be25ca"
+  },
+  "efficiency": {
+    "gflops_per_image": 6.7,
+    "parameters": 2624080
+  },
+  "experiment": "e12_sharpen_20",
+  "locked_test": {
+    "map50": 0.2914,
+    "per_class": {
+      "forklift": 0.1435,
+      "pallet": 0.5279,
+      "pallet_truck": 0.1542,
+      "small_load_carrier": 0.2454,
+      "stillage": 0.3863
+    },
+    "subsets": [
+      1,
+      4
+    ]
+  },
+  "official_validation": {
+    "map50": 0.6618854999542236,
+    "per_class": {
+      "forklift": 0.7673,
+      "pallet": 0.6004,
+      "pallet_truck": 0.6765,
+      "small_load_carrier": 0.5657,
+      "stillage": 0.6994
+    },
+    "subsets": [
+      2,
+      3,
+      5
+    ]
+  },
+  "training_summary": {
+    "epochs": 100,
+    "input_size": 640,
+    "map50": 0.6663252827559457,
+    "map50_95": 0.32374744741608974,
+    "precision": 0.7306717597131853,
+    "pretrained_weights": "yolo11n.pt",
+    "recall": 0.6098035503197166
+  }
+}

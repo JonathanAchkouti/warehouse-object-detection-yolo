@@ -117,7 +117,7 @@ def train(config: dict[str, Any], *, smoke: bool = False) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=Path("configs/e11_yolo11n_domain_aug.yaml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/e12_sharpen_20.yaml"))
     parser.add_argument("--smoke", action="store_true")
     args = parser.parse_args()
     train(load_config(args.config), smoke=args.smoke)
