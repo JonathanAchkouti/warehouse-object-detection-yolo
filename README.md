@@ -3,9 +3,10 @@
 A minimal PyTorch baseline for detecting warehouse objects in the
 [LOCO dataset](https://github.com/tum-fml/loco).
 
-> **Final-model entry points:** use `train_yolo.py`, `eval_yolo.py`, and
+> **Official submission: E12 YOLO11n.** Use `train_yolo.py`, `eval_yolo.py`, and
 > `configs/e12_sharpen_20.yaml`. The template's `train.py` and `eval.py` remain available only for
-> the earlier SSDLite experiments and do not construct the submitted YOLO model.
+> the earlier SSDLite experiments and do not construct the submitted YOLO model. E13 is documented
+> below only as a later, non-submission follow-up and does not replace E12.
 
 ## Project objective
 
@@ -30,8 +31,8 @@ mAP@0.5, no higher total parameter count or GFLOPs, and is strictly better on at
 ## Setup
 
 ```bash
-git clone https://github.com/malek-wahidi/AcademyObjectDetection.git
-cd AcademyObjectDetection
+git clone https://github.com/JonathanAchkouti/inmindAcademyDetector.git
+cd inmindAcademyDetector
 uv sync
 bash scripts/download_loco.sh
 ```
@@ -165,6 +166,78 @@ E12 changes one variable relative to E11 and improves validation by 0.0152 and l
 0.0097. E09 is retained in the ledger because its large validation-to-test reversal motivated the
 move to stronger COCO pretraining and domain-oriented image augmentation.
 
+## Non-submission follow-up: E13 YOLO26s at 896 pixels
+
+E13 was trained and evaluated after E12 had already been selected as the official submission. It
+is retained for research completeness, but **E12 remains the submitted model and the default-branch
+reproduction target**.
+
+The follow-up replaced YOLO11n with COCO-pretrained YOLO26s, raised the input size from 640 to 896,
+reduced the batch size from 16 to 8, increased patience from 20 to 25, and reduced the multi-scale
+range from 0.25 to 0.15. It otherwise retained E12's deterministic split, inference thresholds,
+and domain-oriented augmentation recipe. Training still used only subsets 2, 3, and 5; subsets 1
+and 4 remained locked until the checkpoint was fixed.
+
+The complete implementation and provenance record are isolated on the
+[`codex/yolo26s-highres`](https://github.com/JonathanAchkouti/inmindAcademyDetector/tree/codex/yolo26s-highres)
+branch. See the
+[`E13_FINAL_MODEL_SUMMARY.md`](https://github.com/JonathanAchkouti/inmindAcademyDetector/blob/52ce6d21c6aac95497c5076b9a19064be106ebcd/results/E13_FINAL_MODEL_SUMMARY.md)
+record for the full configuration, dataset manifest, augmentation details, hashes, runtime, and
+domain-gap analysis.
+
+### E13 aggregate results
+
+| Model | Role | Validation mAP@0.5 | Locked test mAP@0.5 | Parameters | GFLOPs |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Instructor baseline | Reference | - | 0.2547 | 18,950,729 | 23.825 |
+| **E12 YOLO11n** | **Official submission** | **0.6619** | **0.2914** | **2,583,127** | **3.811** |
+| E13 YOLO26s | Non-submission follow-up | 0.7498 | 0.3725 | 9,467,115 | 23.298 |
+
+E13 improved locked-test mAP@0.5 by 0.0811 over E12, an 8.11 percentage-point or 27.83%
+relative gain. It came within 0.0275 of 0.40 while remaining below both instructor budgets. The
+larger model uses 3.66 times E12's parameters and 6.11 times its GFLOPs, so it represents a
+different accuracy-efficiency tradeoff rather than a replacement for the submitted E12 result.
+
+### Accuracy-efficiency trade-off
+
+E12 and E13 intentionally illustrate two ends of the assignment's requested trade-off. E12 is the
+efficiency-oriented extreme: it minimizes parameters and GFLOPs while still improving on the
+instructor baseline. E13 is the accuracy-oriented extreme: it spends almost the full permitted
+compute budget to maximize locked-test mAP. Neither model dominates the other because E12 is much
+smaller and cheaper, while E13 is substantially more accurate.
+
+An intermediate sweet spot may exist between these two endpoints, but its location is
+implementation-dependent rather than a fixed property of the model names. Architecture scale,
+input resolution, training recipe, augmentation, and validation-selected post-processing can all
+shift the balance between mAP, parameter count, and GFLOPs. For example, YOLO26n could be evaluated
+as a smaller intermediate candidate: it may retain part of YOLO26s's accuracy gain while requiring
+fewer parameters and GFLOPs. A controlled sweep of YOLO26n resolutions and training settings could
+trace the Pareto frontier and select a model with more accuracy than E12 at considerably less cost
+than E13. That experiment was outside the submitted scope, so YOLO26n is presented only as a
+plausible future candidate, while E12 and E13 remain the measured endpoints.
+
+### E13 per-class results
+
+| Class | Validation AP@0.5 | Locked test AP@0.5 | Test change from E12 |
+| --- | ---: | ---: | ---: |
+| small load carrier | 0.6959 | 0.3070 | +0.0616 |
+| forklift | 0.8212 | 0.1392 | -0.0043 |
+| pallet | 0.7204 | 0.6135 | +0.0856 |
+| stillage | 0.7565 | 0.5403 | +0.1540 |
+| pallet truck | 0.7549 | 0.2623 | +0.1081 |
+| **Mean** | **0.7498** | **0.3725** | **+0.0811** |
+
+The validation-to-test drop is 0.3773, confirming that warehouse-domain shift remains the main
+limitation. Pallet and stillage transfer best, while rare forklift examples still generalize
+poorly. No E13 setting was selected from the locked result, and no post-test tuning was performed.
+
+The selected E13 checkpoint and configuration are identified by SHA-256:
+
+```text
+checkpoint: d57a4a6374ab9cd207156196c105c1b4c75a25e059f50d609a75c1cb601c0873
+config:     a853788b0baf1e8fccd43b6a8899b1980472cdb5accb58ffe5b6e98042f9a45a
+```
+
 ## COCO-pretrained YOLO experiments
 
 `e11_yolo11n_domain_aug` established the accuracy-efficiency candidate. It fine-tunes the
@@ -245,5 +318,6 @@ uv run ruff check .
 
 ## Third-party model
 
-This academic project fine-tunes Ultralytics YOLO11. Ultralytics publishes YOLO11 under
-[AGPL-3.0 and Enterprise licensing options](https://docs.ultralytics.com/models/yolo11/).
+The official E12 submission fine-tunes Ultralytics YOLO11, while the isolated E13 follow-up branch
+fine-tunes YOLO26s. Ultralytics publishes its models under AGPL-3.0 and Enterprise licensing
+options.
